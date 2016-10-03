@@ -23,7 +23,11 @@ var apiData = {
   chronoposte: {
     host: 'www.chrono-api.fr',
     port: 8484,
+    "rejectUnauthorized": false, 
     path: '/services/postage/chronopost/df8d2738-f342-4a81-9e19-05294fcd8b29/parcel/tracking/infos/FR/',
+    headers: {
+      'Content-Type': 'application/json',
+    },
     data: false
   },
   fedex: {

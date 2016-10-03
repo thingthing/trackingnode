@@ -18,8 +18,9 @@ function mainController($scope, $http) {
         $http.post('/send', $scope.formData)
             .success(function(data) {
                 $scope.formData = {}; // clear the form so our user is ready to enter another
-                if (data.meta.code != 200) $scope.main = data.meta.message;
-                else $scope.main = data.data;
+                $scope.main = data;
+                //if (data.meta.code != 200) $scope.main = data.meta.message;
+                //else $scope.main = data.data;
                 console.log("In angular data = " + data);
             })
             .error(function(data) {
