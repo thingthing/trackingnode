@@ -60,11 +60,8 @@
 
                         <!-- BIND THIS VALUE TO formData.text IN ANGULAR -->
                          <select name="singleSelect" ng-model="formData.api">
-                          <option value="poste">La poste</option>
-                          <option value="chronoposte">Chronoposte</option>
-                          <option value="ups">UPS</option>
-                          <option value="fedex">Fedex</option>
-                          <option value="ninjavan">Ninja Van</option>
+                           <option value="auto" selected="selected">Automatique</option>
+                           <option ng-repeat="courier in couriers" value="{{courier.slug}}">{{ courier.name }} </option>
                         </select>
                         <input type="text" class="form-control input-lg text-center"  id="coli" name="coli" placeholder="123" ng-model="formData.coli">
                     </div>

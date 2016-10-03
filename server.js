@@ -11,13 +11,13 @@ var app      = express();                               // create our app w/ exp
 var morgan = require('morgan');             // log requests to the console (express4)
 var bodyParser = require('body-parser');    // pull information from HTML POST (express4)
 var methodOverride = require('method-override'); // simulate DELETE and PUT (express4)
+var querystring = require('querystring');
 var https = require('https');
 
 var apiData = {
   poste: {
     host: 'api.laposte.fr',
     path: '/suivi/v1/',
-    port: 443,
     data: false
   },
   chronoposte: {
@@ -29,7 +29,6 @@ var apiData = {
   fedex: {
     host: 'fedex.com',
     path: '/Tracking?ascend_header=1&clienttype=dotcomreg&cntry_code=fr&language=french&tracknumbers',
-    port: 443,
     data: false
   },
   ninjavan: {
@@ -37,10 +36,21 @@ var apiData = {
     path: '/2.0/orders/',
     port: 443,
   },
+  aftership:{
+    host: 'api.aftership.com',
+    path: '/v4/trackings/',
+    headers: {
+      'Content-Type': 'application/json',
+      'aftership-api-key': 'bbf9f89d-38c9-4c48-af10-de9cd66fed6e'
+    },	
+  },
   ups: {
     host: 'wwwcie.ups.com',
     path: '/rest/Track/',
-    port: 443,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
     data: {
       "UPSSecurity": {
         "UsernameToken": {
@@ -64,13 +74,62 @@ var apiData = {
   }
 };
 
+var couriers = [];
+
+var defPath = apiData.aftership.path;
+
+function callAllApi(coli, res) {
+  var found = false;
+  var i = 0;
+  var j = 0;
+  
+  var callback = function(response) {
+	  var str = '';
+
+	  //another chunk of data has been recieved, so append it to `str`
+	  response.on('data', function (chunk) {
+	  	console.log("data got");
+	    str += chunk;
+	  });
+
+	  //the whole response has been recieved, so we just print it out here
+	  response.on('end', function () {
+	  	console.log("end");
+	    console.log(str);
+	    var data = JSON.parse(str);
+	    ++j;
+	    if (data.meta.code == 200 && !found) {
+	      found = true;
+	      res.send(str);
+	    } else if (!found && i == j) {
+	      console.log("i == " + i + " -- j  == " + j);
+	      res.send(str);
+	    }
+	  });
+	}
+	
+  for (i = 0; i < couriers.length; ++i) {
+    	var options = apiData.aftership;
+      console.log("slug are == " + couriers[i].slug);
+      options.path = defPath + couriers[i].slug + '/' + coli;
+    	
+      console.log("starting request to " + options.path);
+    	https.request(options, callback).end();
+  }
+}
+
 function callapi(api, coli, res)
 {
-  if (!apiData[api].data) apiData[api].path += coli;
-  else apiData[api].data.TrackRequest.InquiryNumber = coli;
-  
-	var options = apiData[api];
+  // if (api == "auto" || api == undefined) {
+  //   return callAllApi(coli, res);  
+  // }
+  //if (!apiData[api].data) apiData[api].path += coli;
+  //else apiData[api].data.TrackRequest.InquiryNumber = coli;
 
+	var options = apiData.chronoposte;
+  console.log("api found is == " + api);
+  options.path = apiData.chronoposte.path + coli;
+	
 	var callback = function(response) {
 	  var str = '';
 
@@ -87,8 +146,10 @@ function callapi(api, coli, res)
 	    res.send(str);
 	  });
 	}
-  console.log("starting request");
-	https.request(options, callback).end();
+  console.log("starting request to " + options.path);
+	var req = https.request(options, callback);
+	//if (apiData[api].data) req.write(querystring.stringify(apiData[api].data));
+  req.end();
 }
 
 // configuration =================
@@ -105,6 +166,34 @@ app.use(methodOverride());
 app.post('/send', function(req, res) {
   callapi(req.body.api, req.body.coli, res);
   console.log("sending done");
+});
+
+app.get('/couriers', function(req, res) {
+  	var callback = function(response) {
+	  var str = '';
+
+	  //another chunk of data has been recieved, so append it to `str`
+	  response.on('data', function (chunk) {
+	  	console.log("data got");
+	    str += chunk;
+	  });
+
+	  //the whole response has been recieved, so we just print it out here
+	  response.on('end', function () {
+	  	console.log("end");
+	    console.log(str);
+	    couriers = JSON.parse(str).data.couriers;
+	    res.send(str);
+	  });
+	}
+	https.request({
+    host: 'api.aftership.com',
+    path: '/v4/couriers/',
+    headers: {
+      'Content-Type': 'application/json',
+      'aftership-api-key': 'bbf9f89d-38c9-4c48-af10-de9cd66fed6e'
+    },	
+  }, callback).end();
 });
 
 app.get('*', function(req, res) {
