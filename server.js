@@ -17,25 +17,30 @@ var apiData = {
   poste: {
     host: 'api.laposte.fr',
     path: '/suivi/v1/',
+    port: 443,
     data: false
   },
   chronoposte: {
-    host: 'www.chrono-api.fr:8484',
+    host: 'www.chrono-api.fr',
+    port: 8484,
     path: '/services/postage/chronopost/df8d2738-f342-4a81-9e19-05294fcd8b29/parcel/tracking/infos/FR/',
     data: false
   },
   fedex: {
     host: 'fedex.com',
     path: '/Tracking?ascend_header=1&clienttype=dotcomreg&cntry_code=fr&language=french&tracknumbers',
+    port: 443,
     data: false
   },
   ninjavan: {
     host: 'api.ninjavan.sg',
-    path: '/2.0/orders/'
+    path: '/2.0/orders/',
+    port: 443,
   },
   ups: {
     host: 'wwwcie.ups.com',
     path: '/rest/Track/',
+    port: 443,
     data: {
       "UPSSecurity": {
         "UsernameToken": {
@@ -82,7 +87,7 @@ function callapi(api, coli, res)
 	    res.send(str);
 	  });
 	}
-
+  console.log("starting request");
 	https.request(options, callback).end();
 }
 
