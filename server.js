@@ -133,7 +133,7 @@ function callapi(api, coli, res)
   
 
 
-	var options = apiData[api];
+	var options = JSON.parse(JSON.stringify(apiData[api]));
   console.log("api found is == " + api);
 
 	if (!apiData[api].data) options.path += coli;

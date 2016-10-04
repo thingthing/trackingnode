@@ -21,7 +21,7 @@ function mainController($scope, $http) {
                 $scope.main = data;
                 //if (data.meta.code != 200) $scope.main = data.meta.message;
                 //else $scope.main = data.data;
-                console.log("In angular data = " + data);
+                console.log("In angular data = ", data);
             })
             .error(function(data) {
                 console.log('Error: ' + data);
