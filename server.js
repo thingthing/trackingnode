@@ -11,18 +11,10 @@ var app      = express();                               // create our app w/ exp
 var morgan = require('morgan');             // log requests to the console (express4)
 var bodyParser = require('body-parser');    // pull information from HTML POST (express4)
 var methodOverride = require('method-override'); // simulate DELETE and PUT (express4)
-var querystring = require('querystring');
 var https = require('https');
 
-var upsAPI = require('shipping-ups');
-
-var ups = new upsAPI({
-  environment: 'live', // or sandbox
-  username: 'thingthing',
-  password: 'MJ]n6;-6Rc^#Z2LhS>ea',
-  access_key: '6D170498A309C648',
-  imperial: false // set to false for metric
-});
+var apiKey = 'Apwx7NK0U39IVl93aJRarA';
+var easypost = require('node-easypost')(apiKey);
   
 var apiData = {
   poste: {
@@ -93,16 +85,20 @@ var apiData = {
 
 var couriers = [];
 
-var defPath = apiData.aftership.path;
-
 function callAllApi(coli, res) {
   var found = false;
   var i = 0;
   var j = 0;
-  
-  var callback = function(response) {
-	  var str = '';
 
+  var callback = function(err, response, tracker_id, tracking_code) {
+	  var str = '';
+    console.log("error in callback all is ", err);
+    console.log("response is == ", response);
+    console.log("tracker_id = ", tracker_id, " -- tracking_code = ", tracking_code);
+    if (err) {
+      res.send(err.message);
+      return ;
+    }
 	  //another chunk of data has been recieved, so append it to `str`
 	  response.on('data', function (chunk) {
 	  	console.log("data got");
@@ -123,15 +119,11 @@ function callAllApi(coli, res) {
 	    }
 	  });
 	}
-	
-  for (i = 0; i < couriers.length; ++i) {
-    	var options = apiData.aftership;
-      console.log("slug are == " + couriers[i].slug);
-      options.path = defPath + couriers[i].slug + '/' + coli;
-    	
-      console.log("starting request to " + options.path);
-    	https.request(options, callback).end();
-  }
+	console.log("coli number is == [" + coli);
+	easypost.Tracker.create({
+      tracking_code: coli
+  }, callback);
+
 }
 
 function callapi(api, coli, res)
@@ -139,16 +131,7 @@ function callapi(api, coli, res)
   if (api == "auto" || api == undefined) {
     return callAllApi(coli, res);  
   }
-  
-  if (api == "ups"){
-      ups.track(coli, function(err, result) {
-        console.log("ups result == ", result);
-        console.log("error == ", err);
-        if (err) res.send(err.ErrorDescription);
-        else res.send(JSON.stringify(result));
-      });
-    return ;
-  }
+
 	var options = JSON.parse(JSON.stringify(apiData[api]));
   console.log("api found is == " + api);
 
