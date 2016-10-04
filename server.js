@@ -18,6 +18,10 @@ var apiData = {
   poste: {
     host: 'api.laposte.fr',
     path: '/suivi/v1/',
+    headers :{
+      'Content-Type': 'application/json',
+      'X-Okapi-Key' : 'Pubnuuw3sf5NItBPpuvMP9YPI0r3cudky83Bn4dd5Zb2TFO2x7KDY4KnH0fjdvRp'
+    },
     data: false
   },
   chronoposte: {
@@ -126,12 +130,14 @@ function callapi(api, coli, res)
   if (api == "auto" || api == undefined) {
     return callAllApi(coli, res);  
   }
-  //if (!apiData[api].data) apiData[api].path += coli;
-  //else apiData[api].data.TrackRequest.InquiryNumber = coli;
+  
 
-	var options = apiData.aftership;
+
+	var options = apiData[api];
   console.log("api found is == " + api);
-  options.path = defPath + api + '/' + coli;
+
+	if (!apiData[api].data) options.path += coli;
+  else options.data.TrackRequest.InquiryNumber = coli;
 	
 	var callback = function(response) {
 	  var str = '';
@@ -171,29 +177,17 @@ app.post('/send', function(req, res) {
 });
 
 app.get('/couriers', function(req, res) {
-  	var callback = function(response) {
-	  var str = '';
-
-	  //another chunk of data has been recieved, so append it to `str`
-	  response.on('data', function (chunk) {
-	    str += chunk;
-	  });
-
-	  //the whole response has been recieved, so we just print it out here
-	  response.on('end', function () {
-	    console.log("end ", str);
-	    couriers = JSON.parse(str).data.couriers;
-	    res.send(str);
-	  });
-	}
-	https.request({
-    host: 'api.aftership.com',
-    path: '/v4/couriers/',
-    headers: {
-      'Content-Type': 'application/json',
-      'aftership-api-key': 'bbf9f89d-38c9-4c48-af10-de9cd66fed6e'
-    },	
-  }, callback).end();
+    couriers = [
+      {
+        slug: 'poste',
+        name: 'La Poste'
+      },
+      {
+        slug: 'chronoposte',
+        name: 'Chronoposte'
+      }
+    ];
+	  res.send(JSON.stringify({'data': {'couriers': couriers}}));
 });
 
 app.get('*', function(req, res) {

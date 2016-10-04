@@ -7,7 +7,7 @@ function mainController($scope, $http) {
     $http.get('/couriers')
         .success(function(data) {
             $scope.couriers = data.data.couriers;
-            console.log(data);
+            console.log($scope.couriers);
         })
         .error(function(data) {
             console.log('Error: ' + data);
