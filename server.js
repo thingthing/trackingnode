@@ -106,7 +106,6 @@ function callAllApi(coli, res) {
 	      found = true;
 	      res.send(str);
 	    } else if (!found && i == j) {
-	      console.log("i == " + i + " -- j  == " + j);
 	      res.send(str);
 	    }
 	  });
@@ -124,15 +123,15 @@ function callAllApi(coli, res) {
 
 function callapi(api, coli, res)
 {
-  // if (api == "auto" || api == undefined) {
-  //   return callAllApi(coli, res);  
-  // }
+  if (api == "auto" || api == undefined) {
+    return callAllApi(coli, res);  
+  }
   //if (!apiData[api].data) apiData[api].path += coli;
   //else apiData[api].data.TrackRequest.InquiryNumber = coli;
 
-	var options = apiData.chronoposte;
+	var options = apiData.aftership;
   console.log("api found is == " + api);
-  options.path = apiData.chronoposte.path + coli;
+  options.path = defPath + api + '/' + coli;
 	
 	var callback = function(response) {
 	  var str = '';
@@ -145,8 +144,7 @@ function callapi(api, coli, res)
 
 	  //the whole response has been recieved, so we just print it out here
 	  response.on('end', function () {
-	  	console.log("end");
-	    console.log(str);
+	    console.log("end ", str);
 	    res.send(str);
 	  });
 	}
@@ -178,14 +176,12 @@ app.get('/couriers', function(req, res) {
 
 	  //another chunk of data has been recieved, so append it to `str`
 	  response.on('data', function (chunk) {
-	  	console.log("data got");
 	    str += chunk;
 	  });
 
 	  //the whole response has been recieved, so we just print it out here
 	  response.on('end', function () {
-	  	console.log("end");
-	    console.log(str);
+	    console.log("end ", str);
 	    couriers = JSON.parse(str).data.couriers;
 	    res.send(str);
 	  });
@@ -207,84 +203,3 @@ app.get('*', function(req, res) {
 // listen (start app with node server.js) ======================================
 app.listen(process.env.PORT || 3000);
 console.log("App listening on port " + (process.env.PORT || 3000));
-    
-/*var http = require('http');
-var path = require('path');
-
-var async = require('async');
-var socketio = require('socket.io');
-var express = require('express');
-
-//
-// ## SimpleServer `SimpleServer(obj)`
-//
-// Creates a new instance of SimpleServer with the following options:
-//  * `port` - The HTTP port to listen on. If `process.env.PORT` is set, _it overrides this value_.
-//
-var router = express();
-var server = http.createServer(router);
-var io = socketio.listen(server);
-
-router.use(express.static(path.resolve(__dirname, 'client')));
-var messages = [];
-var sockets = [];
-
-io.on('connection', function (socket) {
-    messages.forEach(function (data) {
-      socket.emit('message', data);
-    });
-
-    sockets.push(socket);
-
-    socket.on('disconnect', function () {
-      sockets.splice(sockets.indexOf(socket), 1);
-      updateRoster();
-    });
-
-    socket.on('message', function (msg) {
-      var text = String(msg || '');
-
-      if (!text)
-        return;
-
-      socket.get('name', function (err, name) {
-        var data = {
-          name: name,
-          text: text
-        };
-
-        broadcast('message', data);
-        messages.push(data);
-      });
-    });
-
-    socket.on('identify', function (name) {
-      socket.set('name', String(name || 'Anonymous'), function (err) {
-        updateRoster();
-      });
-    });
-  });
-
-function updateRoster() {
-  async.map(
-    sockets,
-    function (socket, callback) {
-      socket.get('name', callback);
-    },
-    function (err, names) {
-      broadcast('roster', names);
-    }
-  );
-}
-
-function broadcast(event, data) {
-  sockets.forEach(function (socket) {
-    socket.emit(event, data);
-  });
-}
-
-server.listen(process.env.PORT || 3000, process.env.IP || "0.0.0.0", function(){
-  var addr = server.address();
-  console.log("Chat server listening at", addr.address + ":" + addr.port);
-});
-*/
