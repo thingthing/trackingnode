@@ -14,6 +14,16 @@ var methodOverride = require('method-override'); // simulate DELETE and PUT (exp
 var querystring = require('querystring');
 var https = require('https');
 
+var upsAPI = require('shipping-ups');
+
+var ups = new upsAPI({
+  environment: 'live', // or sandbox
+  username: 'thingthing',
+  password: 'MJ]n6;-6Rc^#Z2LhS>ea',
+  access_key: '6D170498A309C648',
+  imperial: false // set to false for metric
+});
+  
 var apiData = {
   poste: {
     host: 'api.laposte.fr',
@@ -24,6 +34,7 @@ var apiData = {
     },
     data: false
   },
+  //XX123456789FR
   chronoposte: {
     host: 'www.chrono-api.fr',
     port: 8484,
@@ -36,13 +47,8 @@ var apiData = {
   },
   fedex: {
     host: 'fedex.com',
-    path: '/Tracking?ascend_header=1&clienttype=dotcomreg&cntry_code=fr&language=french&tracknumbers',
+    path: '/Tracking?ascend_header=1&clienttype=dotcomreg&cntry_code=fr&language=french&tracknumbers=',
     data: false
-  },
-  ninjavan: {
-    host: 'api.ninjavan.sg',
-    path: '/2.0/orders/',
-    port: 443,
   },
   aftership:{
     host: 'api.aftership.com',
@@ -52,12 +58,15 @@ var apiData = {
       'aftership-api-key': 'bbf9f89d-38c9-4c48-af10-de9cd66fed6e'
     },	
   },
+  //1Z999AA10123456784
   ups: {
-    host: 'wwwcie.ups.com',
+    host: 'onlinetools.ups.com',
     path: '/rest/Track/',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
     },
     data: {
       "UPSSecurity": {
@@ -131,8 +140,15 @@ function callapi(api, coli, res)
     return callAllApi(coli, res);  
   }
   
-
-
+  if (api == "ups"){
+      ups.track(coli, function(err, result) {
+        console.log("ups result == ", result);
+        console.log("error == ", err);
+        if (err) res.send(err.ErrorDescription);
+        else res.send(JSON.stringify(result));
+      });
+    return ;
+  }
 	var options = JSON.parse(JSON.stringify(apiData[api]));
   console.log("api found is == " + api);
 
@@ -156,7 +172,10 @@ function callapi(api, coli, res)
 	}
   console.log("starting request to " + options.path);
 	var req = https.request(options, callback);
-	//if (apiData[api].data) req.write(querystring.stringify(apiData[api].data));
+	if (options.method == 'POST') {
+	  req.write(JSON.stringify(options.data));
+    console.log("writing the data == ", JSON.stringify(options.data));
+	}
   req.end();
 }
 
@@ -185,6 +204,10 @@ app.get('/couriers', function(req, res) {
       {
         slug: 'chronoposte',
         name: 'Chronoposte'
+      },
+      {
+        slug: 'ups',
+        name: 'UPS'
       }
     ];
 	  res.send(JSON.stringify({'data': {'couriers': couriers}}));
