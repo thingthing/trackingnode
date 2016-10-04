@@ -15,6 +15,17 @@ var querystring = require('querystring');
 var https = require('https');
 
 var upsAPI = require('shipping-ups');
+var fedexAPI = require('shipping-fedex');
+
+var fedex = new fedexAPI({
+  environment: 'sandbox', // or live
+  debug: true,
+  key: 'znpCwxcbPqcMWBI5',
+  password: 'rjCH4C0SlAXuSvLFfMsbWE2Hf',
+  account_number: '601322307',
+  meter_number: '118751876',
+  imperial: false // set to false for metric
+});
 
 var ups = new upsAPI({
   environment: 'live', // or sandbox
@@ -25,6 +36,7 @@ var ups = new upsAPI({
 });
   
 var apiData = {
+  //RK007189045FR
   poste: {
     host: 'api.laposte.fr',
     path: '/suivi/v1/',
@@ -45,9 +57,16 @@ var apiData = {
     },
     data: false
   },
+  //9261299997970843905411
   fedex: {
     host: 'fedex.com',
     path: '/Tracking?ascend_header=1&clienttype=dotcomreg&cntry_code=fr&language=french&tracknumbers=',
+    data: false
+  },
+  //35540884480
+  gls: {
+    host: 'www.gls-group.eu',
+    path: '/276-I-PORTAL-WEB/content/GLS/FR01/FR/5004.htm?txtAction=71000&txtRefNo=',
     data: false
   },
   aftership:{
@@ -58,7 +77,7 @@ var apiData = {
       'aftership-api-key': 'bbf9f89d-38c9-4c48-af10-de9cd66fed6e'
     },	
   },
-  //1Z999AA10123456784
+  //1Z88X862YW61068165
   ups: {
     host: 'onlinetools.ups.com',
     path: '/rest/Track/',
@@ -149,6 +168,27 @@ function callapi(api, coli, res)
       });
     return ;
   }
+  
+  if (api == "fedex") {
+    fedex.track({
+      SelectionDetails: {
+        PackageIdentifier: {
+          Type: 'TRACKING_NUMBER_OR_DOORTAG',
+          Value: coli
+        }
+      }
+    }, function(err, result) {
+      if(err) {
+        res.send(JSON.stringify(err));
+        return console.log(err);
+      }
+      console.log("Success");
+      res.send(JSON.stringify(result.CompletedTrackDetails));
+      console.log(result);
+    });
+    return ;
+  } 
+    
 	var options = JSON.parse(JSON.stringify(apiData[api]));
   console.log("api found is == " + api);
 
@@ -208,6 +248,14 @@ app.get('/couriers', function(req, res) {
       {
         slug: 'ups',
         name: 'UPS'
+      },
+      {
+        slug: 'fedex',
+        name: 'Fedex'
+      },
+      {
+        slug: 'gls',
+        name: 'GLS'
       }
     ];
 	  res.send(JSON.stringify({'data': {'couriers': couriers}}));
