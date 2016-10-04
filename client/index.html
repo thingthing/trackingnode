@@ -10,109 +10,12 @@
         padding-top: 60px;
       }
     </style>
-    <!--script>
-      function ChatController($scope) {
-        var socket = io.connect();
-
-        $scope.messages = [];
-        $scope.roster = [];
-        $scope.name = '';
-        $scope.text = '';
-
-        socket.on('connect', function () {
-          $scope.setName();
-        });
-
-        socket.on('message', function (msg) {
-          $scope.messages.push(msg);
-          $scope.$apply();
-        });
-
-        socket.on('roster', function (names) {
-          $scope.roster = names;
-          $scope.$apply();
-        });
-
-        $scope.send = function send() {
-          console.log('Sending message:', $scope.text);
-          socket.emit('message', $scope.text);
-          $scope.text = '';
-        };
-
-        $scope.setName = function setName() {
-          socket.emit('identify', $scope.name);
-        };
-      }
-    </script-->
   </head>
   <body ng-controller="mainController">
-    <div class="container">
-
-        <!-- HEADER AND Return of request -->
-        <div class="jumbotron text-center">
-            <h1>Retour de l'api:  <span class="label label-info">{{ main }}</span></h1>
-        </div>
-
-        <div id="todo-form" class="row">
-            <div class="col-sm-8 col-sm-offset-2 text-center">
-                <form>
-                    <div class="form-group">
-
-                        <!-- BIND THIS VALUE TO formData.text IN ANGULAR -->
-                         <select name="singleSelect" ng-model="formData.api">
-                           <option value="auto" selected="selected">Automatique</option>
-                           <option ng-repeat="courier in couriers" value="{{courier.slug}}">{{ courier.name }} </option>
-                        </select>
-                        <input type="text" class="form-control input-lg text-center"  id="coli" name="coli" placeholder="123" ng-model="formData.coli">
-                    </div>
-
-                    <button type="submit" class="btn btn-primary btn-lg" ng-click="send()">Chercher</button>
-                </form>
-            </div>
-        </div>
-
-   <!-- <div class="container" ng-controller="ChatController">
-      <div class="navbar navbar-fixed-top navbar-inverse">
-        <div class="navbar-inner">
-          <div class="pull-right">
-            <a href="https://c9.io" class="brand">Cloud9 IDE</a>
-          </div>
-        </div>
-      </div>
-      <div class="page-header">
-        <h1>Suivi de Coli example</h1>
-      </div>
-      <div class="row">
-        <div class="span9">
-          <table class="table table-striped table-bordered">
-            <thead>
-              <tr>
-                <th class="span3">Host</th>
-                <th class="span3">Path</th>
-                <th class="span3">Numéro de coli</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td class="span3"></td>
-                <td class="span3"></td>
-                <td class="span3"></td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="row controls">
-            <form ng-submit="send()">
-              <div class="span2"><input type="text" class="input-block-level" ng-model="name" ng-change="setName()" placeholder="Your Name"></div>
-              <div class="input-append span7">
-                <input type="text" class="span6" ng-model="text" placeholder="Message">
-                <input type="submit" class="span1 btn btn-primary" value="Send" ng-disabled="!text">
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-    <script src="/socket.io/socket.io.js"></script-->
+    <div id="as-root"></div>
+    <div class="as-track-button" data-size="large" data-domain="track.aftership.com"></div>
+    
+    <script>(function(e,t,n){var r,i=e.getElementsByTagName(t)[0];if(e.getElementById(n))return;r=e.createElement(t);r.id=n;r.src="//button.aftership.com/all.js";i.parentNode.insertBefore(r,i)})(document,"script","aftership-jssdk")</script>
     <script src="/js/jquery.min.js"></script>
     <script src="/js/bootstrap.min.js"></script>
     <script src="/js/angular.min.js"></script>
