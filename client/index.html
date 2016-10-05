@@ -3,118 +3,67 @@
   <head>
     <title>Api Suivi Example</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
     <link rel="stylesheet" href="/css/bootstrap-responsive.min.css">
     <style>
       body {
         padding-top: 60px;
       }
     </style>
-    <!--script>
-      function ChatController($scope) {
-        var socket = io.connect();
-
-        $scope.messages = [];
-        $scope.roster = [];
-        $scope.name = '';
-        $scope.text = '';
-
-        socket.on('connect', function () {
-          $scope.setName();
-        });
-
-        socket.on('message', function (msg) {
-          $scope.messages.push(msg);
-          $scope.$apply();
-        });
-
-        socket.on('roster', function (names) {
-          $scope.roster = names;
-          $scope.$apply();
-        });
-
-        $scope.send = function send() {
-          console.log('Sending message:', $scope.text);
-          socket.emit('message', $scope.text);
-          $scope.text = '';
-        };
-
-        $scope.setName = function setName() {
-          socket.emit('identify', $scope.name);
-        };
-      }
-    </script-->
   </head>
   <body ng-controller="mainController">
+
     <div class="container">
 
-        <!-- HEADER AND Return of request -->
-        <div class="jumbotron text-center">
-            <h1>Retour de l'api:  <span class="label label-info">{{ main }}</span></h1>
-        </div>
-
-        <div id="todo-form" class="row">
-            <div class="col-sm-8 col-sm-offset-2 text-center">
-                <form>
-                    <div class="form-group">
-
-                        <!-- BIND THIS VALUE TO formData.text IN ANGULAR -->
-                         <select name="singleSelect" ng-model="formData.api">
-                           <option value="auto" selected="selected">Automatique</option>
-                           <option ng-repeat="courier in couriers" value="{{courier.slug}}">{{ courier.name }} </option>
-                        </select>
-                        <input type="text" class="form-control input-lg text-center"  id="coli" name="coli" placeholder="123" ng-model="formData.coli">
-                    </div>
-
-                    <button type="submit" class="btn btn-primary btn-lg" ng-click="send()">Chercher</button>
-                </form>
-            </div>
-        </div>
-
-   <!-- <div class="container" ng-controller="ChatController">
-      <div class="navbar navbar-fixed-top navbar-inverse">
-        <div class="navbar-inner">
-          <div class="pull-right">
-            <a href="https://c9.io" class="brand">Cloud9 IDE</a>
-          </div>
-        </div>
-      </div>
-      <div class="page-header">
-        <h1>Suivi de Coli example</h1>
-      </div>
       <div class="row">
-        <div class="span9">
-          <table class="table table-striped table-bordered">
-            <thead>
-              <tr>
-                <th class="span3">Host</th>
-                <th class="span3">Path</th>
-                <th class="span3">Numéro de coli</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td class="span3"></td>
-                <td class="span3"></td>
-                <td class="span3"></td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="row controls">
-            <form ng-submit="send()">
-              <div class="span2"><input type="text" class="input-block-level" ng-model="name" ng-change="setName()" placeholder="Your Name"></div>
-              <div class="input-append span7">
-                <input type="text" class="span6" ng-model="text" placeholder="Message">
-                <input type="submit" class="span1 btn btn-primary" value="Send" ng-disabled="!text">
-              </div>
-            </form>
+          <div class="col-sm-8 col-sm-offset-2 text-center">
+              <form>
+                  <div class="form-group">
+                       <div class="input-group">
+                        <div class="input-group-btn">
+                          <select name="singleSelect" ng-model="formData.api" class="btn btn-default dropdown-toggle">
+                             <option ng-repeat="courier in couriers" value="{{courier.slug}}">{{ courier.name }} </option>
+                          </select>
+                        </div><!-- /btn-group -->
+                        <input type="text" class="form-control text-center"  id="coli" name="coli" placeholder="123" ng-model="formData.coli">
+                      </div><!-- /input-group -->
+                  </div>
+
+                  <button type="submit" class="btn btn-primary btn-lg" ng-click="send()">Chercher</button>
+              </form>
           </div>
+      </div>
+      <br>
+      <div class="panel panel-primary" flex-gt-sm="50" ng-show="main">
+        <div class="panel-heading">Information</div>
+        
+        <div class="panel-body">
+          <span >Carrier: {{ main.carrier }}</span><br>
+          <span>Tracking number: {{ main.tracking_number }}</span><br>
+          <span>Status: {{ main.tracking_status.status }}</span><br>
+          <span>Message: {{ main.tracking_status.status_details }}</span><br>
         </div>
       </div>
+    
+      <div class="panel panel-info" flex-gt-sm="50" flex ng-show="main.tracking_history">
+      
+        <div class="panel-heading">Historique</div>
+        
+        <div class="panel-body">
+          <div class="list-group" ng-repeat="history in main.tracking_history">
+            <div class="list-group-item">
+              <h4 class="list-group-item-heading">{{ history.status_date | date: 'fullDate' }}</h4>
+              <p class="list-group-item-text">Status: {{ history.status }}</p>
+              <p class="list-group-item-text">Message: {{ history.status_details}}</p>
+            </div>
+          </div>
+        </div>
+      
+      </div>
+      
     </div>
-    <script src="/socket.io/socket.io.js"></script-->
     <script src="/js/jquery.min.js"></script>
-    <script src="/js/bootstrap.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
     <script src="/js/angular.min.js"></script>
     <script src="/js/core.js"></script>
   </body>

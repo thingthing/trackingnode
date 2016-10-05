@@ -14,12 +14,39 @@ var methodOverride = require('method-override'); // simulate DELETE and PUT (exp
 var querystring = require('querystring');
 var https = require('https');
 
+var upsAPI = require('shipping-ups');
+var fedexAPI = require('shipping-fedex');
+
+var fedex = new fedexAPI({
+  environment: 'sandbox', // or live
+  debug: true,
+  key: 'znpCwxcbPqcMWBI5',
+  password: 'rjCH4C0SlAXuSvLFfMsbWE2Hf',
+  account_number: '601322307',
+  meter_number: '118751876',
+  imperial: false // set to false for metric
+});
+
+var ups = new upsAPI({
+  environment: 'live', // or sandbox
+  username: 'thingthing',
+  password: 'MJ]n6;-6Rc^#Z2LhS>ea',
+  access_key: '6D170498A309C648',
+  imperial: false // set to false for metric
+});
+  
 var apiData = {
+  //RK007189045FR
   poste: {
     host: 'api.laposte.fr',
     path: '/suivi/v1/',
+    headers :{
+      'Content-Type': 'application/json',
+      'X-Okapi-Key' : 'Pubnuuw3sf5NItBPpuvMP9YPI0r3cudky83Bn4dd5Zb2TFO2x7KDY4KnH0fjdvRp'
+    },
     data: false
   },
+  //XX123456789FR
   chronoposte: {
     host: 'www.chrono-api.fr',
     port: 8484,
@@ -30,15 +57,16 @@ var apiData = {
     },
     data: false
   },
+  //9261299997970843905411
   fedex: {
     host: 'fedex.com',
-    path: '/Tracking?ascend_header=1&clienttype=dotcomreg&cntry_code=fr&language=french&tracknumbers',
+    path: '/Tracking?ascend_header=1&clienttype=dotcomreg&cntry_code=fr&language=french&tracknumbers=',
     data: false
   },
-  ninjavan: {
-    host: 'api.ninjavan.sg',
-    path: '/2.0/orders/',
-    port: 443,
+  gls: {
+    host: 'www.gls-group.eu',
+    path: '/276-I-PORTAL-WEB/content/GLS/FR01/FR/5004.htm?txtAction=71000&txtRefNo=',
+    data: false
   },
   aftership:{
     host: 'api.aftership.com',
@@ -48,12 +76,20 @@ var apiData = {
       'aftership-api-key': 'bbf9f89d-38c9-4c48-af10-de9cd66fed6e'
     },	
   },
+  goshippo: {
+    host: 'api.goshippo.com',
+    path: '/v1/tracks/',
+    data: false
+  },
+  //1Z88X862YW61068165
   ups: {
-    host: 'wwwcie.ups.com',
+    host: 'onlinetools.ups.com',
     path: '/rest/Track/',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
     },
     data: {
       "UPSSecurity": {
@@ -106,7 +142,6 @@ function callAllApi(coli, res) {
 	      found = true;
 	      res.send(str);
 	    } else if (!found && i == j) {
-	      console.log("i == " + i + " -- j  == " + j);
 	      res.send(str);
 	    }
 	  });
@@ -122,17 +157,89 @@ function callAllApi(coli, res) {
   }
 }
 
+function chronoposteEndPoint(data, coli) {
+  var res = {
+    "carrier": "Chronopost",
+    "tracking_number": coli,
+    "address_from": null,
+    "address_to": null,
+    "eta": "",
+    "tracking_status": {
+      "status": data[data.length - 1].event,
+      "status_details": data[data.length - 1].extra,
+      "status_date": data[data.length - 1].date,
+      "location": null
+    },
+    "tracking_history": []
+  };
+  
+  for (var i = 0; i < data.length; ++i) {
+    res.tracking_history.push({
+      "status": data[i].event,
+      "status_details": data[i].extra,
+      "status_date": data[i].date,
+      "location": {}
+    });
+  }
+  
+  return (JSON.stringify(res));  
+}
+
+function posteEndPoint(data, coli) {
+  var res = {
+    "carrier": data.type || "La poste",
+    "tracking_number": coli,
+    "address_from": null,
+    "address_to": null,
+    "eta": null,
+    "tracking_status": {
+      "status": data.status,
+      "status_details": data.message,
+      "status_date": data.date,
+      "location": null
+    },
+    "tracking_history": []
+  };
+  
+  return (JSON.stringify(res));  
+}
+
+function errorHandling(carrier, coli) {
+  var c = couriers.filter(function(obj) {
+    return (obj.slug == carrier);
+  });
+  console.log("carrier found is == " + c);
+  var res = {
+    "carrier": carrier,
+    "tracking_number": coli,
+    "address_from": null,
+    "address_to": null,
+    "eta": null,
+    "tracking_status": null,
+    "tracking_history": []
+  };
+  
+  return (JSON.stringify(res));
+}
+
 function callapi(api, coli, res)
 {
-  // if (api == "auto" || api == undefined) {
-  //   return callAllApi(coli, res);  
-  // }
-  //if (!apiData[api].data) apiData[api].path += coli;
-  //else apiData[api].data.TrackRequest.InquiryNumber = coli;
+  if (api == "auto" || api == undefined) {
+    return callAllApi(coli, res);  
+  }
 
-	var options = apiData.chronoposte;
-  console.log("api found is == " + api);
-  options.path = apiData.chronoposte.path + coli;
+    var options;
+    
+    if (api != 'poste' && api != 'chronoposte') {
+      	options = JSON.parse(JSON.stringify(apiData.goshippo));
+        console.log("api found is == " + api);
+        
+        options.path += api + '/';
+    } else {
+      options = JSON.parse(JSON.stringify(apiData[api]));
+    }
+
+	options.path += coli;
 	
 	var callback = function(response) {
 	  var str = '';
@@ -145,14 +252,33 @@ function callapi(api, coli, res)
 
 	  //the whole response has been recieved, so we just print it out here
 	  response.on('end', function () {
-	  	console.log("end");
-	    console.log(str);
+	    console.log("end ", str);
+	    try {
+  	    var data = JSON.parse(str);
+  	    if (api == 'chronoposte') {
+  	      str = chronoposteEndPoint(data, coli);
+  	    } else if (api == 'poste') {
+  	      str = posteEndPoint(data, coli);
+  	    }
+	     } catch (e) {
+        console.error("Parsing error:", e);
+        str = errorHandling(api, coli);
+      }
 	    res.send(str);
 	  });
 	}
-  console.log("starting request to " + options.path);
+	
+  console.log("starting request to " + options.path, options.host);
 	var req = https.request(options, callback);
-	//if (apiData[api].data) req.write(querystring.stringify(apiData[api].data));
+	
+	req.on('error', (e) => {
+    console.log(`problem with request: ${e.message}`);
+  });
+  
+	if (options.method == 'POST') {
+	  req.write(JSON.stringify(options.data));
+    console.log("writing the data == ", JSON.stringify(options.data));
+	}
   req.end();
 }
 
@@ -173,31 +299,33 @@ app.post('/send', function(req, res) {
 });
 
 app.get('/couriers', function(req, res) {
-  	var callback = function(response) {
-	  var str = '';
-
-	  //another chunk of data has been recieved, so append it to `str`
-	  response.on('data', function (chunk) {
-	  	console.log("data got");
-	    str += chunk;
-	  });
-
-	  //the whole response has been recieved, so we just print it out here
-	  response.on('end', function () {
-	  	console.log("end");
-	    console.log(str);
-	    couriers = JSON.parse(str).data.couriers;
-	    res.send(str);
-	  });
-	}
-	https.request({
-    host: 'api.aftership.com',
-    path: '/v4/couriers/',
-    headers: {
-      'Content-Type': 'application/json',
-      'aftership-api-key': 'bbf9f89d-38c9-4c48-af10-de9cd66fed6e'
-    },	
-  }, callback).end();
+    couriers = [
+      {
+        slug: 'poste',
+        name: 'La Poste'
+      },
+      {
+        slug: 'chronoposte',
+        name: 'Chronoposte'
+      },
+      {
+        slug: 'ups',
+        name: 'UPS'
+      },
+      {
+        slug: 'fedex',
+        name: 'Fedex'
+      },
+      {
+        slug: 'gls_france',
+        name: 'GLS'
+      },
+      {
+        slug: 'dhl_express',
+        name: 'DHL Express'
+      }
+    ];
+	  res.send(JSON.stringify({'data': {'couriers': couriers}}));
 });
 
 app.get('*', function(req, res) {
@@ -207,84 +335,3 @@ app.get('*', function(req, res) {
 // listen (start app with node server.js) ======================================
 app.listen(process.env.PORT || 3000);
 console.log("App listening on port " + (process.env.PORT || 3000));
-    
-/*var http = require('http');
-var path = require('path');
-
-var async = require('async');
-var socketio = require('socket.io');
-var express = require('express');
-
-//
-// ## SimpleServer `SimpleServer(obj)`
-//
-// Creates a new instance of SimpleServer with the following options:
-//  * `port` - The HTTP port to listen on. If `process.env.PORT` is set, _it overrides this value_.
-//
-var router = express();
-var server = http.createServer(router);
-var io = socketio.listen(server);
-
-router.use(express.static(path.resolve(__dirname, 'client')));
-var messages = [];
-var sockets = [];
-
-io.on('connection', function (socket) {
-    messages.forEach(function (data) {
-      socket.emit('message', data);
-    });
-
-    sockets.push(socket);
-
-    socket.on('disconnect', function () {
-      sockets.splice(sockets.indexOf(socket), 1);
-      updateRoster();
-    });
-
-    socket.on('message', function (msg) {
-      var text = String(msg || '');
-
-      if (!text)
-        return;
-
-      socket.get('name', function (err, name) {
-        var data = {
-          name: name,
-          text: text
-        };
-
-        broadcast('message', data);
-        messages.push(data);
-      });
-    });
-
-    socket.on('identify', function (name) {
-      socket.set('name', String(name || 'Anonymous'), function (err) {
-        updateRoster();
-      });
-    });
-  });
-
-function updateRoster() {
-  async.map(
-    sockets,
-    function (socket, callback) {
-      socket.get('name', callback);
-    },
-    function (err, names) {
-      broadcast('roster', names);
-    }
-  );
-}
-
-function broadcast(event, data) {
-  sockets.forEach(function (socket) {
-    socket.emit(event, data);
-  });
-}
-
-server.listen(process.env.PORT || 3000, process.env.IP || "0.0.0.0", function(){
-  var addr = server.address();
-  console.log("Chat server listening at", addr.address + ":" + addr.port);
-});
-*/
