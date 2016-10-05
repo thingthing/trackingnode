@@ -10,7 +10,7 @@
         padding-top: 60px;
       }
       #map {
-        height: 100%;
+        height: 300px;
         float: left;
         width: 70%;
       }
@@ -41,7 +41,10 @@
       </div>
       <br>
       
-      <div id="map"></div>
+      <div class="row">
+        <div id="map" class="col-sm-8 col-sm-offset-2" flex-gt-sm="50"></div>
+      </div>
+      <br>
       
       <div class="panel panel-{{panelClass}}" flex-gt-sm="50" ng-show="main">
         <div class="panel-heading">Information</div>

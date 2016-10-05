@@ -1,11 +1,13 @@
 var scotchTodo = angular.module('scotchTodo', []);
+var directionsService;
+var directionsDisplay;
 
 function initMap() {
-    var directionsService = new google.maps.DirectionsService;
-    var directionsDisplay = new google.maps.DirectionsRenderer;
+    directionsService = new google.maps.DirectionsService;
+    directionsDisplay = new google.maps.DirectionsRenderer;
     var map = new google.maps.Map(document.getElementById('map'), {
       zoom: 6,
-      center: {lat: 41.85, lng: -87.65}
+      center: {lat: 48, lng: 2}
     });
     directionsDisplay.setMap(map);
     
@@ -14,41 +16,29 @@ function initMap() {
     // });
 }
     
-function calculateAndDisplayRoute(directionsService, directionsDisplay) {
+function calculateAndDisplayRoute(directionsService, directionsDisplay, origin, destination, histo) {
+    if (!origin || !destination) return ;
     var waypts = [];
-    var checkboxArray = document.getElementById('waypoints');
-    for (var i = 0; i < checkboxArray.length; i++) {
-      if (checkboxArray.options[i].selected) {
+    // 8 is the max number of waypoint
+    for (var i = 0; i < histo.length && i < 8; i++) {
         waypts.push({
-          location: checkboxArray[i].value,
+          location: histo[i].city + ', ' + histo[i].country + ', ' + histo[i].zip + ', ' + histo[i].state,
           stopover: true
         });
-      }
     }
-    
+    console.log("origin == ", origin);
+    console.log("destination == ", destination);
     directionsService.route({
-      origin: document.getElementById('start').value,
-      destination: document.getElementById('end').value,
+      origin: origin,
+      destination: destination,
       waypoints: waypts,
       optimizeWaypoints: true,
       travelMode: 'DRIVING'
     }, function(response, status) {
       if (status === 'OK') {
         directionsDisplay.setDirections(response);
-        var route = response.routes[0];
-        var summaryPanel = document.getElementById('directions-panel');
-        summaryPanel.innerHTML = '';
-        // For each route, display summary information.
-        for (var i = 0; i < route.legs.length; i++) {
-          var routeSegment = i + 1;
-          summaryPanel.innerHTML += '<b>Route Segment: ' + routeSegment +
-              '</b><br>';
-          summaryPanel.innerHTML += route.legs[i].start_address + ' to ';
-          summaryPanel.innerHTML += route.legs[i].end_address + '<br>';
-          summaryPanel.innerHTML += route.legs[i].distance.text + '<br><br>';
-        }
       } else {
-        window.alert('Directions request failed due to ' + status);
+        console.log('Directions request failed due to ' + status);
       }
     });
 }
@@ -85,6 +75,29 @@ function mainController($scope, $http) {
                 }
                 //$scope.formData = {}; // clear the form so our user is ready to enter another or not
                 $scope.main = data;
+                initMap();
+                
+                if (data.address_from || data.address_to) {
+                    var destination = '';
+                    var origin = '';
+                    if (data.address_from) {
+                        origin = data.address_from.city + ', ' + data.address_from.country + ', ' + data.address_from.zip + ', ' + data.address_from.state;
+                    }
+                    if (data.address_to) {
+                        destination = data.address_to.city + ', ' + data.address_to.country + ', ' + data.address_to.zip + ', ' + data.address_to.state;
+                    }
+                    var histo = [];
+                    var first_loc = {};
+                    
+                    for (var i = 0; i < data.tracking_history.length; ++i) {
+                        histo.push(data.tracking_history[i].location);
+                        if (data.tracking_history[i].location) first_loc = data.tracking_history[i].location;
+                    }
+                    
+                    if (!origin) origin = first_loc.city + ', ' + first_loc.country + ', ' + first_loc.zip + ', ' + first_loc.state;
+                    
+                    calculateAndDisplayRoute(directionsService, directionsDisplay, origin, destination, histo);
+                } 
                 //if (data.meta.code != 200) $scope.main = data.meta.message;
                 //else $scope.main = data.data;
                 console.log("In angular data = ", data);
