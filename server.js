@@ -11,30 +11,8 @@ var app      = express();                               // create our app w/ exp
 var morgan = require('morgan');             // log requests to the console (express4)
 var bodyParser = require('body-parser');    // pull information from HTML POST (express4)
 var methodOverride = require('method-override'); // simulate DELETE and PUT (express4)
-var querystring = require('querystring');
 var https = require('https');
 
-var upsAPI = require('shipping-ups');
-var fedexAPI = require('shipping-fedex');
-
-var fedex = new fedexAPI({
-  environment: 'sandbox', // or live
-  debug: true,
-  key: 'znpCwxcbPqcMWBI5',
-  password: 'rjCH4C0SlAXuSvLFfMsbWE2Hf',
-  account_number: '601322307',
-  meter_number: '118751876',
-  imperial: false // set to false for metric
-});
-
-var ups = new upsAPI({
-  environment: 'live', // or sandbox
-  username: 'thingthing',
-  password: 'MJ]n6;-6Rc^#Z2LhS>ea',
-  access_key: '6D170498A309C648',
-  imperial: false // set to false for metric
-});
-  
 var apiData = {
   //RK007189045FR
   poste: {
@@ -114,7 +92,32 @@ var apiData = {
   }
 };
 
-var couriers = [];
+var couriers = [
+  {
+    slug: 'chronoposte',
+    name: 'Chronoposte'
+  },
+  {
+    slug: 'poste',
+    name: 'La Poste'
+  },
+  {
+    slug: 'ups',
+    name: 'UPS'
+  },
+  {
+    slug: 'fedex',
+    name: 'Fedex'
+  },
+  {
+    slug: 'gls_france',
+    name: 'GLS'
+  },
+  {
+    slug: 'dhl_express',
+    name: 'DHL Express'
+  }
+];
 
 var defPath = apiData.aftership.path;
 
@@ -123,37 +126,65 @@ function callAllApi(coli, res) {
   var i = 0;
   var j = 0;
   
-  var callback = function(response) {
-	  var str = '';
-
-	  //another chunk of data has been recieved, so append it to `str`
-	  response.on('data', function (chunk) {
-	  	console.log("data got");
-	    str += chunk;
-	  });
-
-	  //the whole response has been recieved, so we just print it out here
-	  response.on('end', function () {
-	  	console.log("end");
-	    console.log(str);
-	    var data = JSON.parse(str);
-	    ++j;
-	    if (data.meta.code == 200 && !found) {
-	      found = true;
-	      res.send(str);
-	    } else if (!found && i == j) {
-	      res.send(str);
-	    }
-	  });
-	}
-	
+  
   for (i = 0; i < couriers.length; ++i) {
-    	var options = apiData.aftership;
-      console.log("slug are == " + couriers[i].slug);
-      options.path = defPath + couriers[i].slug + '/' + coli;
-    	
-      console.log("starting request to " + options.path);
-    	https.request(options, callback).end();
+    if (found) return;
+
+    var options = {};
+    
+    if (couriers[i].slug != 'poste' && couriers[i].slug != 'chronoposte') {
+    	options = JSON.parse(JSON.stringify(apiData.goshippo));
+      options.path += couriers[i].slug + '/';
+    } else {
+      options = JSON.parse(JSON.stringify(apiData[couriers[i].slug]));
+    }
+
+	  options.path += coli;
+	
+    console.log("starting request in all to " + options.path, options.host);
+    (function(api) {
+      https.request(options, function(response) {
+    	  var str = '';
+  
+    	  //another chunk of data has been recieved, so append it to `str`
+    	  response.on('data', function (chunk) {
+    	  	console.log("data got");
+    	    str += chunk;
+    	  });
+    
+    	  //the whole response has been recieved, so we just print it out here
+    	  response.on('end', function () {
+    	    console.log("end ", str);
+    	    console.log("with api == ", api);
+    	    if (found) return;
+    	    try {
+      	    ++j;
+      	    var data = JSON.parse(str);
+      	    
+      	    if (api == 'chronoposte') {
+      	      str = chronoposteEndPoint(data, coli);
+      	    } else if (api == 'poste') {
+      	      str = posteEndPoint(data, coli);
+      	    }
+      	    data = JSON.parse(str);
+      	    console.log("data after parse is == ", data);
+      	    if (data.tracking_status && data.tracking_status.status) found = true;
+      	    
+    	     } catch (e) {
+            console.error("Parsing error:", e);
+          }
+          
+          if (found) {
+    	      res.send(str);
+    	      return ;
+    	    } else if (!found && i == j) {
+    	      res.send(errorHandling("Unknown", coli));
+    	    }
+    	    
+    	  });
+    	}).end();
+    })(couriers[i].slug);
+
   }
 }
 
@@ -228,20 +259,19 @@ function callapi(api, coli, res)
     return callAllApi(coli, res);  
   }
 
-    var options;
-    
-    if (api != 'poste' && api != 'chronoposte') {
-      	options = JSON.parse(JSON.stringify(apiData.goshippo));
-        console.log("api found is == " + api);
-        
-        options.path += api + '/';
-    } else {
-      options = JSON.parse(JSON.stringify(apiData[api]));
-    }
+  var options;
+  
+  if (api != 'poste' && api != 'chronoposte') {
+  	options = JSON.parse(JSON.stringify(apiData.goshippo));
+    options.path += api + '/';
+  } else {
+    options = JSON.parse(JSON.stringify(apiData[api]));
+  }
 
 	options.path += coli;
 	
-	var callback = function(response) {
+  console.log("starting request to " + options.path, options.host);
+	var req = https.request(options, function(response) {
 	  var str = '';
 
 	  //another chunk of data has been recieved, so append it to `str`
@@ -266,10 +296,7 @@ function callapi(api, coli, res)
       }
 	    res.send(str);
 	  });
-	}
-	
-  console.log("starting request to " + options.path, options.host);
-	var req = https.request(options, callback);
+	});
 	
 	req.on('error', (e) => {
     console.log(`problem with request: ${e.message}`);
@@ -299,32 +326,6 @@ app.post('/send', function(req, res) {
 });
 
 app.get('/couriers', function(req, res) {
-    couriers = [
-      {
-        slug: 'poste',
-        name: 'La Poste'
-      },
-      {
-        slug: 'chronoposte',
-        name: 'Chronoposte'
-      },
-      {
-        slug: 'ups',
-        name: 'UPS'
-      },
-      {
-        slug: 'fedex',
-        name: 'Fedex'
-      },
-      {
-        slug: 'gls_france',
-        name: 'GLS'
-      },
-      {
-        slug: 'dhl_express',
-        name: 'DHL Express'
-      }
-    ];
 	  res.send(JSON.stringify({'data': {'couriers': couriers}}));
 });
 

@@ -17,24 +17,25 @@
 
       <div class="row">
           <div class="col-sm-8 col-sm-offset-2 text-center">
-              <form>
+              <form class="form-inline">
                   <div class="form-group">
                        <div class="input-group">
                         <div class="input-group-btn">
-                          <select name="singleSelect" ng-model="formData.api" class="btn btn-default dropdown-toggle">
-                             <option ng-repeat="courier in couriers" value="{{courier.slug}}">{{ courier.name }} </option>
+                          <select name="singleSelect" ng-model="formData.api" class="btn btn-default">
+                             <option value="auto">Automatique</option>
+                             <option ng-repeat="courier in couriers" value="{{courier.slug}}">{{ courier.name }}</option>
                           </select>
                         </div><!-- /btn-group -->
                         <input type="text" class="form-control text-center"  id="coli" name="coli" placeholder="123" ng-model="formData.coli">
                       </div><!-- /input-group -->
                   </div>
 
-                  <button type="submit" class="btn btn-primary btn-lg" ng-click="send()">Chercher</button>
+                  <button type="submit" class="btn btn-primary" ng-click="send()">Chercher</button>
               </form>
           </div>
       </div>
       <br>
-      <div class="panel panel-primary" flex-gt-sm="50" ng-show="main">
+      <div class="panel panel-{{panelClass}}" flex-gt-sm="50" ng-show="main">
         <div class="panel-heading">Information</div>
         
         <div class="panel-body">
@@ -42,6 +43,10 @@
           <span>Tracking number: {{ main.tracking_number }}</span><br>
           <span>Status: {{ main.tracking_status.status }}</span><br>
           <span>Message: {{ main.tracking_status.status_details }}</span><br>
+          <span ng-show="main.eta">ETA: {{ main.eta | date: 'fullDate' }}<br></span>
+          <span ng-show="main.adress_from">From: {{ main.adress_from.city }}<br></span>
+          <span ng-show="main.adress_to">To: {{ main.adress_to.city }}<br></span>
+          <span ng-show="main.tracking_status.location">Adress: {{ main.tracking_status.location.city }}<br></span>
         </div>
       </div>
     
@@ -55,6 +60,7 @@
               <h4 class="list-group-item-heading">{{ history.status_date | date: 'fullDate' }}</h4>
               <p class="list-group-item-text">Status: {{ history.status }}</p>
               <p class="list-group-item-text">Message: {{ history.status_details}}</p>
+              <p class="list-group-item-text" ng-show="history.location">Adress: {{ history.location.city}}</p>
             </div>
           </div>
         </div>

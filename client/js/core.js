@@ -18,13 +18,17 @@ function mainController($scope, $http) {
     $scope.send = function() {
         $http.post('/send', $scope.formData)
             .success(function(data) {
+                $scope.panelClass = "primary";
                 if (!data.tracking_status) {
                     data.tracking_status = {
                         "status_details": "Impossible de trouver votre coli."
                     };
+                    $scope.panelClass = "danger";
                 }
+                
                 if (!data.tracking_status.status) {
-                    data.tracking_status.status = "UNKOWN"
+                    data.tracking_status.status = "UNKOWN";
+                    $scope.panelClass = "danger";
                 }
                 //$scope.formData = {}; // clear the form so our user is ready to enter another or not
                 $scope.main = data;
