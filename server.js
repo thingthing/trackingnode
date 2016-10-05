@@ -63,7 +63,6 @@ var apiData = {
     path: '/Tracking?ascend_header=1&clienttype=dotcomreg&cntry_code=fr&language=french&tracknumbers=',
     data: false
   },
-  //35540884480
   gls: {
     host: 'www.gls-group.eu',
     path: '/276-I-PORTAL-WEB/content/GLS/FR01/FR/5004.htm?txtAction=71000&txtRefNo=',
@@ -76,6 +75,11 @@ var apiData = {
       'Content-Type': 'application/json',
       'aftership-api-key': 'bbf9f89d-38c9-4c48-af10-de9cd66fed6e'
     },	
+  },
+  goshippo: {
+    host: 'api.goshippo.com',
+    path: '/v1/tracks/',
+    data: false
   },
   //1Z88X862YW61068165
   ups: {
@@ -153,47 +157,89 @@ function callAllApi(coli, res) {
   }
 }
 
+function chronoposteEndPoint(data, coli) {
+  var res = {
+    "carrier": "Chronopost",
+    "tracking_number": coli,
+    "address_from": null,
+    "address_to": null,
+    "eta": "",
+    "tracking_status": {
+      "status": data[data.length - 1].event,
+      "status_details": data[data.length - 1].extra,
+      "status_date": data[data.length - 1].date,
+      "location": null
+    },
+    "tracking_history": []
+  };
+  
+  for (var i = 0; i < data.length; ++i) {
+    res.tracking_history.push({
+      "status": data[i].event,
+      "status_details": data[i].extra,
+      "status_date": data[i].date,
+      "location": {}
+    });
+  }
+  
+  return (JSON.stringify(res));  
+}
+
+function posteEndPoint(data, coli) {
+  var res = {
+    "carrier": data.type || "La poste",
+    "tracking_number": coli,
+    "address_from": null,
+    "address_to": null,
+    "eta": null,
+    "tracking_status": {
+      "status": data.status,
+      "status_details": data.message,
+      "status_date": data.date,
+      "location": null
+    },
+    "tracking_history": []
+  };
+  
+  return (JSON.stringify(res));  
+}
+
+function errorHandling(carrier, coli) {
+  var c = couriers.filter(function(obj) {
+    return (obj.slug == carrier);
+  });
+  console.log("carrier found is == " + c);
+  var res = {
+    "carrier": carrier,
+    "tracking_number": coli,
+    "address_from": null,
+    "address_to": null,
+    "eta": null,
+    "tracking_status": null,
+    "tracking_history": []
+  };
+  
+  return (JSON.stringify(res));
+}
+
 function callapi(api, coli, res)
 {
   if (api == "auto" || api == undefined) {
     return callAllApi(coli, res);  
   }
-  
-  if (api == "ups"){
-      ups.track(coli, function(err, result) {
-        console.log("ups result == ", result);
-        console.log("error == ", err);
-        if (err) res.send(err.ErrorDescription);
-        else res.send(JSON.stringify(result));
-      });
-    return ;
-  }
-  
-  if (api == "fedex") {
-    fedex.track({
-      SelectionDetails: {
-        PackageIdentifier: {
-          Type: 'TRACKING_NUMBER_OR_DOORTAG',
-          Value: coli
-        }
-      }
-    }, function(err, result) {
-      if(err) {
-        res.send(JSON.stringify(err));
-        return console.log(err);
-      }
-      console.log("Success");
-      res.send(JSON.stringify(result.CompletedTrackDetails));
-      console.log(result);
-    });
-    return ;
-  } 
-    
-	var options = JSON.parse(JSON.stringify(apiData[api]));
-  console.log("api found is == " + api);
 
-	if (!apiData[api].data) options.path += coli;
-  else options.data.TrackRequest.InquiryNumber = coli;
+    var options;
+    
+    if (api != 'poste' && api != 'chronoposte') {
+      	options = JSON.parse(JSON.stringify(apiData.goshippo));
+        console.log("api found is == " + api);
+        
+        options.path += api + '/';
+    } else {
+      options = JSON.parse(JSON.stringify(apiData[api]));
+    }
+
+	options.path += coli;
 	
 	var callback = function(response) {
 	  var str = '';
@@ -207,11 +253,28 @@ function callapi(api, coli, res)
 	  //the whole response has been recieved, so we just print it out here
 	  response.on('end', function () {
 	    console.log("end ", str);
+	    try {
+  	    var data = JSON.parse(str);
+  	    if (api == 'chronoposte') {
+  	      str = chronoposteEndPoint(data, coli);
+  	    } else if (api == 'poste') {
+  	      str = posteEndPoint(data, coli);
+  	    }
+	     } catch (e) {
+        console.error("Parsing error:", e);
+        str = errorHandling(api, coli);
+      }
 	    res.send(str);
 	  });
 	}
-  console.log("starting request to " + options.path);
+	
+  console.log("starting request to " + options.path, options.host);
 	var req = https.request(options, callback);
+	
+	req.on('error', (e) => {
+    console.log(`problem with request: ${e.message}`);
+  });
+  
 	if (options.method == 'POST') {
 	  req.write(JSON.stringify(options.data));
     console.log("writing the data == ", JSON.stringify(options.data));
@@ -254,8 +317,12 @@ app.get('/couriers', function(req, res) {
         name: 'Fedex'
       },
       {
-        slug: 'gls',
+        slug: 'gls_france',
         name: 'GLS'
+      },
+      {
+        slug: 'dhl_express',
+        name: 'DHL Express'
       }
     ];
 	  res.send(JSON.stringify({'data': {'couriers': couriers}}));
