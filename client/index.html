@@ -9,6 +9,11 @@
       body {
         padding-top: 60px;
       }
+      #map {
+        height: 300px;
+        float: left;
+        width: 70%;
+      }
     </style>
   </head>
   <body ng-controller="mainController">
@@ -35,6 +40,12 @@
           </div>
       </div>
       <br>
+      
+      <div class="row">
+        <div id="map" class="col-sm-8 col-sm-offset-2" flex-gt-sm="50"></div>
+      </div>
+      <br>
+      
       <div class="panel panel-{{panelClass}}" flex-gt-sm="50" ng-show="main">
         <div class="panel-heading">Information</div>
         
@@ -44,9 +55,9 @@
           <span>Status: {{ main.tracking_status.status }}</span><br>
           <span>Message: {{ main.tracking_status.status_details }}</span><br>
           <span ng-show="main.eta">ETA: {{ main.eta | date: 'fullDate' }}<br></span>
-          <span ng-show="main.adress_from">From: {{ main.adress_from.city }}<br></span>
-          <span ng-show="main.adress_to">To: {{ main.adress_to.city }}<br></span>
-          <span ng-show="main.tracking_status.location">Adress: {{ main.tracking_status.location.city }}<br></span>
+          <span ng-show="main.address_from">From: {{ main.address_from.city }}<br></span>
+          <span ng-show="main.address_to">To: {{ main.address_to.city }}<br></span>
+          <!--<span ng-show="main.tracking_status.location">Adress: {{ main.tracking_status.location.city }}<br></span>-->
         </div>
       </div>
     
@@ -72,5 +83,6 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
     <script src="/js/angular.min.js"></script>
     <script src="/js/core.js"></script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD6umMewy2Sw7If_JUDRFFTBBXVoicNH4U&callback=initMap"></script>
   </body>
 </html>
