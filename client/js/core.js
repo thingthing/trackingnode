@@ -10,10 +10,6 @@ function initMap() {
       center: {lat: 48, lng: 2}
     });
     directionsDisplay.setMap(map);
-    
-    // document.getElementById('submit').addEventListener('click', function() {
-    //   calculateAndDisplayRoute(directionsService, directionsDisplay);
-    // });
 }
     
 function calculateAndDisplayRoute(directionsService, directionsDisplay, origin, destination, histo) {
@@ -28,11 +24,12 @@ function calculateAndDisplayRoute(directionsService, directionsDisplay, origin, 
     }
     console.log("origin == ", origin);
     console.log("destination == ", destination);
+    console.log("waypoint are == ", waypts);
     directionsService.route({
       origin: origin,
       destination: destination,
       waypoints: waypts,
-      optimizeWaypoints: true,
+      optimizeWaypoints: false,
       travelMode: 'DRIVING'
     }, function(response, status) {
       if (status === 'OK') {
@@ -61,6 +58,7 @@ function mainController($scope, $http) {
     $scope.send = function() {
         $http.post('/send', $scope.formData)
             .success(function(data) {
+                console.log("data == ", data);
                 $scope.panelClass = "primary";
                 if (!data.tracking_status) {
                     data.tracking_status = {
@@ -73,7 +71,7 @@ function mainController($scope, $http) {
                     data.tracking_status.status = "UNKOWN";
                     $scope.panelClass = "danger";
                 }
-                //$scope.formData = {}; // clear the form so our user is ready to enter another or not
+                //$scope.formData = {}; // clear the form so our user is ready to enter another... or not
                 $scope.main = data;
                 initMap();
                 
@@ -90,16 +88,27 @@ function mainController($scope, $http) {
                     var first_loc = {};
                     
                     for (var i = 0; i < data.tracking_history.length; ++i) {
-                        histo.push(data.tracking_history[i].location);
-                        if (data.tracking_history[i].location) first_loc = data.tracking_history[i].location;
+                        if (data.tracking_history[i].location && data.tracking_history[i].location.city ) {
+                            if (histo.length > 0) {
+                                if (data.tracking_history[i].location.city == histo[histo.length - 1].city) continue;
+                            }
+                            
+                            if (!first_loc.city) {
+                                first_loc = data.tracking_history[i].location;
+                                console.log("first loc found == ", first_loc);   
+                            } else if (first_loc.city != data.tracking_history[i].location.city){
+                                histo.push(data.tracking_history[i].location);
+                            }
+                        }
                     }
                     
-                    if (!origin) origin = first_loc.city + ', ' + first_loc.country + ', ' + first_loc.zip + ', ' + first_loc.state;
-                    
+                    if (!origin) {
+                        origin = first_loc.city + ', ' + first_loc.country + ', ' + first_loc.zip + ', ' + first_loc.state;
+                        $scope.main.address_from = first_loc;
+                    }
                     calculateAndDisplayRoute(directionsService, directionsDisplay, origin, destination, histo);
                 } 
-                //if (data.meta.code != 200) $scope.main = data.meta.message;
-                //else $scope.main = data.data;
+
                 console.log("In angular data = ", data);
             })
             .error(function(data) {

@@ -11,10 +11,11 @@ var app      = express();                               // create our app w/ exp
 var morgan = require('morgan');             // log requests to the console (express4)
 var bodyParser = require('body-parser');    // pull information from HTML POST (express4)
 var methodOverride = require('method-override'); // simulate DELETE and PUT (express4)
+var htmlparser = require("htmlparser");
 var https = require('https');
+var http = require('http');
 
 var apiData = {
-  //RK007189045FR
   poste: {
     host: 'api.laposte.fr',
     path: '/suivi/v1/',
@@ -24,7 +25,6 @@ var apiData = {
     },
     data: false
   },
-  //XX123456789FR
   chronoposte: {
     host: 'www.chrono-api.fr',
     port: 8484,
@@ -35,7 +35,10 @@ var apiData = {
     },
     data: false
   },
-  //9261299997970843905411
+  tnt: {
+    host: 'www.tnt.fr',
+    path: '/public/suivi_colis/recherche/visubontransport.do?radiochoixrecherche=BT&bonTransport='
+  },
   fedex: {
     host: 'fedex.com',
     path: '/Tracking?ascend_header=1&clienttype=dotcomreg&cntry_code=fr&language=french&tracknumbers=',
@@ -54,12 +57,16 @@ var apiData = {
       'aftership-api-key': 'bbf9f89d-38c9-4c48-af10-de9cd66fed6e'
     },	
   },
+  dpd: {
+    host: 'e-trace.ils-consult.fr',
+    path: '/exa-webtrace/Webtrace.aspx?cmd=SDG_SEARCH_EXACT&sprache=',
+    port: 80
+  },
   goshippo: {
     host: 'api.goshippo.com',
     path: '/v1/tracks/',
     data: false
   },
-  //1Z88X862YW61068165
   ups: {
     host: 'onlinetools.ups.com',
     path: '/rest/Track/',
@@ -93,18 +100,22 @@ var apiData = {
 };
 
 var couriers = [
+  //XX123456789FR
   {
     slug: 'chronoposte',
     name: 'Chronoposte'
   },
+  //RK007189045FR
   {
     slug: 'poste',
     name: 'La Poste'
   },
+  //1Z88X862YW61068165
   {
     slug: 'ups',
     name: 'UPS'
   },
+  //9261299997970843905411
   {
     slug: 'fedex',
     name: 'Fedex'
@@ -113,9 +124,20 @@ var couriers = [
     slug: 'gls_france',
     name: 'GLS'
   },
+  //2653513914
   {
     slug: 'dhl_express',
     name: 'DHL Express'
+  },
+  //444576672
+  {
+    slug: 'tnt',
+    name: 'TNT'
+  },
+  //2500183095289110
+  {
+    slug: 'dpd',
+    name: 'DPD'
   }
 ];
 
@@ -126,8 +148,8 @@ function callAllApi(coli, res) {
   var i = 0;
   var j = 0;
   
-  
-  for (i = 0; i < couriers.length; ++i) {
+  //Do not test DPD
+  for (i = 0; i < couriers.length - 1; ++i) {
     if (found) return;
 
     var options = {};
@@ -178,7 +200,8 @@ function callAllApi(coli, res) {
     	      res.send(str);
     	      return ;
     	    } else if (!found && i == j) {
-    	      res.send(errorHandling("Unknown", coli));
+    	      console.log("not found with i == ", i, " and api == ", api, " j == ", j, " found == ", found);
+            return (doDpdCall(coli, JSON.parse(JSON.stringify(apiData["dpd"])), res, "Unknonw"));
     	    }
     	    
     	  });
@@ -189,27 +212,57 @@ function callAllApi(coli, res) {
 }
 
 function chronoposteEndPoint(data, coli) {
+  var findVille = function(event) {
+    var index = event.indexOf('\n');
+    return (event.slice(0, index));
+  };
+  
+  var findStatus= function(event) {
+    var index = event.indexOf('\n');
+    return (event.slice(index));
+  };
+  
   var res = {
     "carrier": "Chronopost",
     "tracking_number": coli,
-    "address_from": null,
-    "address_to": null,
+    "address_from":  {
+        "city": findVille(data[0].event),
+        "state": "",
+        "zip":  "",
+        "country": ""
+      },
+    "address_to":  {
+        "city": findVille(data[data.length - 1].event),
+        "state": "",
+        "zip":  "",
+        "country": ""
+      },
     "eta": "",
     "tracking_status": {
-      "status": data[data.length - 1].event,
+      "status": findStatus(data[data.length - 1].event),
       "status_details": data[data.length - 1].extra,
       "status_date": data[data.length - 1].date,
-      "location": null
+      "location": {
+        "city": findVille(data[data.length - 1].event),
+        "state": "",
+        "zip":  "",
+        "country": ""
+      }
     },
     "tracking_history": []
   };
   
-  for (var i = 0; i < data.length; ++i) {
+  for (var i = 0; i < data.length - 1; ++i) {
     res.tracking_history.push({
-      "status": data[i].event,
+      "status": findStatus(data[i].event),
       "status_details": data[i].extra,
       "status_date": data[i].date,
-      "location": {}
+      "location": {
+        "city": findVille(data[i].event),
+        "state": "",
+        "zip":  "",
+        "country": ""
+      }
     });
   }
   
@@ -236,10 +289,7 @@ function posteEndPoint(data, coli) {
 }
 
 function errorHandling(carrier, coli) {
-  var c = couriers.filter(function(obj) {
-    return (obj.slug == carrier);
-  });
-  console.log("carrier found is == " + c);
+  console.log("carrier found is == " + carrier);
   var res = {
     "carrier": carrier,
     "tracking_number": coli,
@@ -253,6 +303,192 @@ function errorHandling(carrier, coli) {
   return (JSON.stringify(res));
 }
 
+function findElemeByAttribute(haystack, attribute, value) {
+  var res = haystack.filter(function(obj) {
+      return (obj.attribs && obj.attribs[attribute] == value);
+  });
+
+  if (res.length > 0) return res;
+  for (var i = 0; i < haystack.length; ++i) {
+      if (haystack[i].children && haystack[i].children.length > 0) res = findElemeByAttribute(haystack[i].children, attribute, value);
+      if (res.length > 0) return res;
+  }
+  return [];
+}
+
+function findElemeByName(needle, haystack) {
+  return haystack.filter(function(obj) {
+    return (obj.name == needle);
+  });
+}
+
+function getDataFromHtmlDpd(dom) {
+  var tracking_history = [];
+  
+  try {
+    var html = findElemeByName("html", dom);
+
+    var body = findElemeByName("body", html[0].children);
+    
+    var container = findElemeByAttribute(body[0].children, "class", "table_container");
+  
+    var table = findElemeByName("table", container[0].children);
+    var tbody = findElemeByName("tbody", table[0].children);
+  
+    var histo = tbody[0].children;
+    
+    
+    for (var i = 0; i < histo.length; ++i) {
+      var ville = histo[i].children[3].children[0].children[0].data;
+      var location = null;
+      if (ville && ville != "&nbsp;") {
+        var indexOfZip = ville.indexOf("(") + 1;
+        var lastIndexOfZip = ville.indexOf(")");
+        var zip = ville.slice(indexOfZip, lastIndexOfZip);
+        if (zip.length > 2 && zip[0] != '9') zip = "";
+        
+        location = {
+          "city": ville.slice(0, indexOfZip - 1),
+          "state": "",
+          "zip": zip,
+          "country": ""
+        };
+      }
+  
+      tracking_history.push({
+        "status": "UNKOWN",
+        "status_details": histo[i].children[2].children[0].children[0].data.slice(0, -6),
+        "status_date": histo[i].children[0].children[0].children[0].data + " " + histo[i].children[1].children[0].children[0].data,
+        "location": location
+      });
+    }
+  } catch(e) {
+    console.log("error got: ", e);
+  }
+  return tracking_history;
+}
+
+function doDpdCall(coli, options, res, courier) {
+  options.path += '&sdg_landnr=' + coli.slice(0, 3);
+  options.path += '&sdg_mandnr=' + coli.slice(3, 6);
+  options.path += '&sdg_lfdnr=' + coli.slice(6);
+  console.log("PATH IN GET DPD PATH IS == ", options.path);
+  
+  var req = http.request(options, function(response) {
+	  var str = '';
+
+	  //another chunk of data has been recieved, so append it to `str`
+	  response.on('data', function (chunk) {
+	  	console.log("data got");
+	    str += chunk;
+	  });
+
+	  //the whole response has been recieved, so we just print it out here
+	  response.on('end', function () {
+	    var handler = new htmlparser.DefaultHandler(function (error, dom) {
+          if (error)
+              console.log("ERROR WHILE PARSING");
+          else {
+            var histo = getDataFromHtmlDpd(dom).reverse();
+            if (histo.length == 0) {
+              return res.send(errorHandling(courier, coli));
+            }
+            var last_histo = histo.pop();
+            
+            var toSend = {
+              "carrier": "DPD",
+              "tracking_number": coli,
+              "address_from": histo[0].location,
+              "address_to": last_histo.location,
+              "eta": null,
+              "tracking_status": last_histo,
+              "tracking_history": histo
+            };
+            
+      	    res.send(JSON.stringify(toSend));
+          }
+      }, { verbose: false, ignoreWhitespace: true });
+      var parser = new htmlparser.Parser(handler);
+      parser.parseComplete(str);
+
+	  });
+	});
+	
+	req.on('error', (e) => {
+    console.log(`problem with request: ${e.message}`);
+    res.send(`problem with request: ${e.message}`)
+  });
+  req.end();
+}
+
+function decodeHtml(str) {
+  console.log("try to decode ", str);
+  return (str.replace(/&#233;/g, "é").replace(/&#231;/g, "ç"));
+}
+
+function getDataFromHtmlTnt(dom) {
+  var tracking_history = [];
+  
+  try {
+    var html = findElemeByName("html", dom);
+    console.log("html is == ", html);
+    var body = findElemeByName("body", html[0].children);
+    var content = findElemeByAttribute(body[0].children, "class", "result__content");
+    var histo = content[0].children;
+    
+    for (var i = 0; i < histo.length; ++i) {
+      var ville = histo[i].children[2].children[0].data.trim().replace(/&nbsp;/gm,'');
+      var date = histo[i].children[1].children[0].data.trim().replace(/&nbsp;:&nbsp;/gm,' ').replace(/\n/gm,'').replace(/\t/gm,'');
+      var status = histo[i].children[0].children[0].data.trim().replace(/&nbsp;/gm,'').replace(/\n/gm,'').replace(/\t/gm,'');
+      var location =  {
+          "city": decodeHtml(ville),
+          "state": "",
+          "zip": "",
+          "country": ""
+        };
+  
+      tracking_history.push({
+        "status": "UNKOWN",
+        "status_details": decodeHtml(status),
+        "status_date": decodeHtml(date),
+        "location": location
+      });
+    }
+  } catch(e) {
+    console.log("error got in TNT parse: ", e);
+  }
+  return tracking_history;
+}
+
+function parseTntInfo(coli, res, str) {
+  var handler = new htmlparser.DefaultHandler(function (error, dom) {
+      if (error)
+          console.log("ERROR WHILE PARSING ", error);
+      else {
+        var histo = getDataFromHtmlTnt(dom).reverse();
+        console.log("data got are = ", histo);
+        if (histo.length == 0) {
+          return res.send(errorHandling("TNT", coli));
+        }
+        var last_histo = histo.pop();
+        
+        var toSend = {
+          "carrier": "DPD",
+          "tracking_number": coli,
+          "address_from": histo[0].location,
+          "address_to": last_histo.location,
+          "eta": null,
+          "tracking_status": last_histo,
+          "tracking_history": histo
+        };
+        
+  	    res.send(JSON.stringify(toSend));
+      }
+  }, { verbose: false, ignoreWhitespace: true });
+  var parser = new htmlparser.Parser(handler);
+  parser.parseComplete(str);
+}
+
 function callapi(api, coli, res)
 {
   if (api == "auto" || api == undefined) {
@@ -261,15 +497,17 @@ function callapi(api, coli, res)
 
   var options;
   
-  if (api != 'poste' && api != 'chronoposte') {
+  if (api != 'poste' && api != 'chronoposte' && api != 'dpd' && api != 'tnt') {
   	options = JSON.parse(JSON.stringify(apiData.goshippo));
     options.path += api + '/';
   } else {
     options = JSON.parse(JSON.stringify(apiData[api]));
   }
+  if (api != 'dpd') options.path += coli;
+  else {
+    return doDpdCall(coli, options, res, "DPD");
+  }
 
-	options.path += coli;
-	
   console.log("starting request to " + options.path, options.host);
 	var req = https.request(options, function(response) {
 	  var str = '';
@@ -283,8 +521,10 @@ function callapi(api, coli, res)
 	  //the whole response has been recieved, so we just print it out here
 	  response.on('end', function () {
 	    console.log("end ", str);
+	    if (api == 'tnt') return (parseTntInfo(coli, res, str));
 	    try {
   	    var data = JSON.parse(str);
+  	    console.log("data got are == ", data);
   	    if (api == 'chronoposte') {
   	      str = chronoposteEndPoint(data, coli);
   	    } else if (api == 'poste') {
@@ -300,6 +540,7 @@ function callapi(api, coli, res)
 	
 	req.on('error', (e) => {
     console.log(`problem with request: ${e.message}`);
+    res.send(`problem with request: ${e.message}`)
   });
   
 	if (options.method == 'POST') {
